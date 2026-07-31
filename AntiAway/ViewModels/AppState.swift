@@ -8,6 +8,7 @@ final class AppState: ObservableObject {
         static let isEnabled = "isEnabled"
         static let interval = "activityInterval"
         static let showDockIcon = "showDockIcon"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
     }
 
     private let defaults: UserDefaults
@@ -30,6 +31,7 @@ final class AppState: ObservableObject {
             NSApp?.setActivationPolicy(showDockIcon ? .regular : .accessory)
         }
     }
+    @Published var isOnboardingPresented: Bool
     @Published private(set) var accessibilityGranted: Bool
     @Published private(set) var loginItemEnabled: Bool
     @Published private(set) var lastActivityDate: Date?
@@ -47,6 +49,7 @@ final class AppState: ObservableObject {
         self.isEnabled = false
         self.interval = ActivityInterval(rawValue: defaults.integer(forKey: Key.interval)) ?? .every60Seconds
         self.showDockIcon = defaults.bool(forKey: Key.showDockIcon)
+        self.isOnboardingPresented = !defaults.bool(forKey: Key.hasCompletedOnboarding)
         self.accessibilityGranted = simulator.hasAccessibilityPermission()
         self.loginItemEnabled = loginItemService.isEnabled()
 
@@ -106,6 +109,20 @@ final class AppState: ObservableObject {
 
     func dismissError() {
         errorMessage = nil
+    }
+
+    func completeOnboarding() {
+        defaults.set(true, forKey: Key.hasCompletedOnboarding)
+        isOnboardingPresented = false
+    }
+
+    func showOnboarding() {
+        isOnboardingPresented = true
+    }
+
+    func requestAccessibilityPermission() {
+        _ = simulator.requestAccessibilityPermission()
+        refreshPermission()
     }
 
     private func scheduleTimer() {

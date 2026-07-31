@@ -7,7 +7,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Activity") {
-                Toggle("Keep Teams active", isOn: Binding(
+                Toggle("Stay active", isOn: Binding(
                     get: { appState.isEnabled },
                     set: { appState.setEnabled($0) }
                 ))
@@ -33,6 +33,7 @@ struct SettingsView: View {
                 Text("AntiAway starts as a menu-bar-only app. Enable this only if you want a Dock icon and a regular app window presence.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Button("Show welcome screen") { appState.showOnboarding() }
             }
 
             Section("Permission") {

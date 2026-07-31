@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -16,7 +16,7 @@ struct AntiAwayApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuContentView(appState: appState)
-                .frame(width: 330)
+                .frame(width: 400)
         } label: {
             MenuBarStatusIcon(isEnabled: appState.isEnabled)
         }
@@ -32,10 +32,9 @@ private struct MenuBarStatusIcon: View {
     let isEnabled: Bool
 
     var body: some View {
-        Image(systemName: isEnabled ? "bolt.circle.fill" : "bolt.circle")
-            .font(.system(size: 16, weight: .semibold))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(isEnabled ? .green : .secondary)
+        Image(systemName: isEnabled ? "bolt.fill" : "bolt")
+            .font(.system(size: 17, weight: .bold))
+            .symbolRenderingMode(.monochrome)
             .accessibilityLabel(isEnabled ? "AntiAway active" : "AntiAway inactive")
             .help(isEnabled ? "AntiAway is active" : "AntiAway is off")
     }
