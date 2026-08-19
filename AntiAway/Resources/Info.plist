@@ -27,6 +27,18 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026</string>
+	<string>Copyright © 2026 Fizz Software S.A.C.</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/Andrescmm/anti-away/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>Ag1UFZiDtzaqW1FS+lVHBmEjgu6QDT2tE4OL7NMhb9E=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

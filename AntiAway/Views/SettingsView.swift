@@ -3,6 +3,16 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var appState: AppState
+    @ObservedObject var updateService: UpdateService
+    @State private var automaticallyChecksForUpdates: Bool
+
+    init(appState: AppState, updateService: UpdateService) {
+        self.appState = appState
+        self.updateService = updateService
+        _automaticallyChecksForUpdates = State(
+            initialValue: updateService.automaticallyChecksForUpdates
+        )
+    }
 
     var body: some View {
         Form {
@@ -38,7 +48,7 @@ struct SettingsView: View {
 
             Section("Permission") {
                 LabeledContent("Accessibility") {
-                Text(appState.accessibilityGranted ? "Allowed" : "Not allowed")
+                    Text(appState.accessibilityGranted ? "Allowed" : "Not allowed")
                         .foregroundStyle(appState.accessibilityGranted ? .green : .orange)
                 }
                 Button("Refresh permission") { appState.refreshPermission() }
@@ -49,9 +59,29 @@ struct SettingsView: View {
                     }
                 }
             }
+
+            Section("Updates") {
+                Toggle("Automatically check for updates", isOn: $automaticallyChecksForUpdates)
+                    .onChange(of: automaticallyChecksForUpdates) { _, enabled in
+                        updateService.setAutomaticallyChecksForUpdates(enabled)
+                    }
+
+                Button("Check for Updates…") {
+                    updateService.checkForUpdates()
+                }
+                .disabled(!updateService.canCheckForUpdates)
+
+                LabeledContent("Installed version", value: installedVersion)
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 310)
+        .frame(width: 460, height: 430)
         .padding()
+    }
+
+    private var installedVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        return "\(version) (\(build))"
     }
 }

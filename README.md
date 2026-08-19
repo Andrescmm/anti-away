@@ -39,6 +39,9 @@ API.
   same location. No clicks, key presses, pointer movement, screenshots, or
   input recording are performed.
 - **`LoginItemService`**: wraps `SMAppService.mainApp` for launch-at-login.
+- **`UpdateService` + Sparkle 2**: checks a signed HTTPS appcast, verifies
+  update archives with AntiAway's EdDSA public key, and presents Sparkle's
+  native update installation UI.
 - **`LiquidGlassSurface`**: uses macOS 26 Liquid Glass when available and a
   native material fallback on macOS 14–25.
 - **`LSUIElement`**: the app has no Dock icon; it is intentionally menu-bar
@@ -62,7 +65,9 @@ AntiAway needs one permission: **System Settings → Privacy & Security →
 Accessibility**. The permission is requested only when the user turns the
 feature on. It is required because macOS protects posting synthetic HID
 events. AntiAway does not request Input Monitoring, Screen Recording, camera,
-microphone, network, or location access.
+microphone, or location access. When update checks are enabled, Sparkle makes
+an HTTPS request to AntiAway's public update feed on GitHub. Anonymous system
+profiling is explicitly disabled.
 
 Grant access to **AntiAway.app itself**, not only Xcode or Terminal. macOS
 stores this permission for the executable identity/path that posts the event;
@@ -100,6 +105,52 @@ xcodebuild -project AntiAway.xcodeproj -scheme AntiAway \
 
 The resulting app is at
 `build/DerivedData/Build/Products/Release/AntiAway.app`.
+
+## Automatic updates
+
+AntiAway 1.1.0 and later use Sparkle 2.9.6. Users can enable automatic update
+checks or run **Check for Updates…** from Settings. Checks are disabled by
+default until the user opts in; no system profile is sent. Downloads are
+validated with Sparkle's EdDSA signature in addition to Developer ID signing
+and Apple notarization.
+
+The update feed is:
+
+```text
+https://raw.githubusercontent.com/Andrescmm/anti-away/main/appcast.xml
+```
+
+Users on a version older than 1.1.0 must install 1.1.0 manually once. Later
+versions can update in place as long as the bundle identifier and signing
+identity remain stable.
+
+The private EdDSA key was created by Sparkle and is stored in the developer's
+login Keychain under the `ed25519` account. It must never be committed. Back it
+up securely outside this repository using Sparkle's `generate_keys -x` option;
+losing it complicates signing future updates.
+
+### Publish an update
+
+1. Increment `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in the target.
+2. Archive, export with Developer ID, notarize, and create the stapled DMG as
+   described below.
+3. Write optional Markdown release notes, for example
+   `build/AntiAway-1.2.0.md`.
+4. Generate the signed appcast entry:
+
+```sh
+./scripts/generate_appcast.sh 1.2.0 \
+  build/AntiAway.dmg build/AntiAway-1.2.0.md
+```
+
+5. Create GitHub release `v1.2.0` and upload the generated
+   `build/sparkle-updates/AntiAway-1.2.0.dmg`.
+6. Commit and push the updated `appcast.xml` only after the release asset is
+   available. Existing installations will then discover the release.
+
+Always keep old appcast entries and release assets available so older clients
+retain a valid upgrade path. Test from an older notarized build before making
+the feed public.
 
 ## Create a signed `.app`
 

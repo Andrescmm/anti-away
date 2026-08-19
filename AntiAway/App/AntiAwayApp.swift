@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct AntiAwayApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appState = AppState()
+    @StateObject private var updateService = UpdateService()
 
     var body: some Scene {
         MenuBarExtra {
@@ -23,7 +24,7 @@ struct AntiAwayApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView(appState: appState)
+            SettingsView(appState: appState, updateService: updateService)
         }
     }
 }

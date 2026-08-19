@@ -126,10 +126,17 @@ final class AppState: ObservableObject {
     }
 
     private func scheduleTimer() {
+        guard shouldEnableWhenPermitted, isEnabled else {
+            timer?.invalidate()
+            timer = nil
+            return
+        }
+
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(interval.rawValue), repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(interval.rawValue), repeats: true) { [weak self] timer in
+            guard timer.isValid else { return }
             Task { @MainActor [weak self] in
-                self?.postActivity()
+                self?.handleActivityTimerFired()
             }
         }
         // Tolerance lets macOS coalesce wake-ups for lower battery impact.
@@ -137,7 +144,7 @@ final class AppState: ObservableObject {
     }
 
     private func startActivity() {
-        guard !isEnabled else { return }
+        guard shouldEnableWhenPermitted, !isEnabled else { return }
         isEnabled = true
         do {
             try simulator.postActivity()
@@ -162,7 +169,12 @@ final class AppState: ObservableObject {
         timer = nil
     }
 
-    private func postActivity() {
+    /// Re-checks the user's intent at execution time. A timer callback can
+    /// already be queued when the switch is turned off, so invalidating the
+    /// timer alone is not sufficient to guarantee that no final event posts.
+    func handleActivityTimerFired() {
+        guard shouldEnableWhenPermitted, isEnabled else { return }
+
         do {
             try simulator.postActivity()
             lastActivityDate = .now
