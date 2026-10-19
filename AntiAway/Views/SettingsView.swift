@@ -21,12 +21,46 @@ struct SettingsView: View {
                     get: { appState.isEnabled },
                     set: { appState.setEnabled($0) }
                 ))
+                .disabled(appState.scheduleEnabled)
                 Picker("Activity interval", selection: $appState.interval) {
                     ForEach(ActivityInterval.allCases) { interval in
                         Text(interval.title).tag(interval)
                     }
                 }
                 Text("AntiAway posts a mouse-moved event at the pointer’s current location. It never clicks, types, or moves the pointer.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Daily schedule") {
+                Toggle("Use schedule", isOn: Binding(
+                    get: { appState.scheduleEnabled },
+                    set: { appState.setScheduleEnabled($0) }
+                ))
+
+                DatePicker(
+                    "Start",
+                    selection: Binding(
+                        get: { appState.scheduleStartTime },
+                        set: { appState.setScheduleStartTime($0) }
+                    ),
+                    displayedComponents: .hourAndMinute
+                )
+                .disabled(!appState.scheduleEnabled)
+
+                DatePicker(
+                    "End",
+                    selection: Binding(
+                        get: { appState.scheduleEndTime },
+                        set: { appState.setScheduleEndTime($0) }
+                    ),
+                    displayedComponents: .hourAndMinute
+                )
+                .disabled(!appState.scheduleEnabled)
+
+                Text(appState.scheduleEnabled
+                     ? "\(appState.scheduleStatusDescription). Overnight ranges are supported. Equal times mean all day."
+                     : "Enable this to start and stop AntiAway automatically every day.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -73,9 +107,15 @@ struct SettingsView: View {
 
                 LabeledContent("Installed version", value: installedVersion)
             }
+
+            Section("Application") {
+                Button("Quit AntiAway", role: .destructive) {
+                    NSApplication.shared.terminate(nil)
+                }
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 430)
+        .frame(width: 460, height: 560)
         .padding()
     }
 

@@ -33,6 +33,9 @@ API.
 - **`AppState`**: the main-actor view model. It persists the enabled state and
   interval in `UserDefaults`, owns the timer, exposes the permission/status
   indicator, and converts service failures into user-facing errors.
+- **`DailySchedule`**: evaluates persisted daily start/end times, including
+  overnight windows, and schedules a single low-power timer for the next
+  boundary. Equal start and end times represent an all-day schedule.
 - **`ActivityPosting` / `ActivitySimulator`**: a small protocol and Quartz
   implementation. The concrete implementation checks Accessibility access,
   reads Quartz's global pointer location, and posts only `.mouseMoved` at that
@@ -50,6 +53,14 @@ API.
 
 The Xcode project lives in `AntiAway.xcodeproj` and source is grouped by
 responsibility under `AntiAway/`.
+
+## Daily schedule
+
+The optional daily schedule automatically starts and stops activity at the
+selected local times. It supports daytime windows such as 09:00–17:00 and
+overnight windows such as 22:00–06:00. While scheduling is enabled, the manual
+activity switch is locked to avoid conflicting state. Disabling the schedule
+returns control to the user's previously saved manual preference.
 
 ## Requirements
 

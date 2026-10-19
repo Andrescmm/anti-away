@@ -26,6 +26,8 @@ struct MenuContentView: View {
                 activityToggle
                 separator
                 intervalPicker
+                separator
+                scheduleControls
                 loginItemToggle
 
                 privacyNotice
@@ -46,8 +48,12 @@ struct MenuContentView: View {
         .background(Theme.panel.opacity(0.93))
         .background(.ultraThinMaterial)
         .preferredColorScheme(.dark)
-        .onAppear { appState.refreshPermission() }
+        .onAppear {
+            appState.refreshSchedule()
+            appState.refreshPermission()
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            appState.refreshSchedule()
             appState.refreshPermission()
         }
         .sheet(isPresented: $appState.isOnboardingPresented) {
@@ -111,31 +117,39 @@ struct MenuContentView: View {
     }
 
     private var statusTitle: String {
+        if appState.scheduleEnabled && !appState.isScheduledNow { return "Waiting for schedule" }
         if !appState.accessibilityGranted { return "Permission required" }
         return appState.isEnabled ? "Staying active" : "AntiAway is off"
     }
 
     private var statusSymbol: String {
+        if appState.scheduleEnabled && !appState.isScheduledNow { return "clock.fill" }
         if !appState.accessibilityGranted { return "exclamationmark" }
         return appState.isEnabled ? "checkmark" : "pause.fill"
     }
 
     private var statusColor: Color {
+        if appState.scheduleEnabled && !appState.isScheduledNow { return Color.white.opacity(0.17) }
         if !appState.accessibilityGranted { return .orange }
         return appState.isEnabled ? Theme.accent : Color.white.opacity(0.17)
     }
 
     private var statusSymbolColor: Color {
+        if appState.scheduleEnabled && !appState.isScheduledNow { return Color.white.opacity(0.68) }
         if !appState.accessibilityGranted { return Theme.panel }
         return appState.isEnabled ? Theme.panel : Color.white.opacity(0.68)
     }
 
     private var statusDotColor: Color {
+        if appState.scheduleEnabled && !appState.isScheduledNow { return Color.white.opacity(0.28) }
         if !appState.accessibilityGranted { return .orange }
         return appState.isEnabled ? Theme.accent : Color.white.opacity(0.28)
     }
 
     private var statusDetail: String {
+        if appState.scheduleEnabled && !appState.isScheduledNow {
+            return appState.scheduleStatusDescription
+        }
         if !appState.accessibilityGranted {
             return "Accessibility access is needed"
         }
@@ -159,8 +173,10 @@ struct MenuContentView: View {
             .labelsHidden()
             .toggleStyle(.switch)
             .tint(Theme.accent)
+            .disabled(appState.scheduleEnabled)
         }
         .frame(height: 62)
+        .opacity(appState.scheduleEnabled ? 0.58 : 1)
     }
 
     private var intervalPicker: some View {
@@ -221,6 +237,73 @@ struct MenuContentView: View {
         .frame(height: 62)
     }
 
+    private var scheduleControls: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                rowLabel("Daily schedule", systemImage: "calendar.badge.clock")
+                Spacer()
+                Toggle("Daily schedule", isOn: Binding(
+                    get: { appState.scheduleEnabled },
+                    set: { appState.setScheduleEnabled($0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(Theme.accent)
+            }
+            .frame(height: 62)
+
+            if appState.scheduleEnabled {
+                HStack(spacing: 8) {
+                    Text("From")
+                        .foregroundStyle(Theme.secondaryText)
+                    schedulePicker(
+                        selection: Binding(
+                            get: { appState.scheduleStartTime },
+                            set: { appState.setScheduleStartTime($0) }
+                        ),
+                        accessibilityLabel: "Schedule start"
+                    )
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Theme.secondaryText)
+
+                    Text("To")
+                        .foregroundStyle(Theme.secondaryText)
+                    schedulePicker(
+                        selection: Binding(
+                            get: { appState.scheduleEndTime },
+                            set: { appState.setScheduleEndTime($0) }
+                        ),
+                        accessibilityLabel: "Schedule end"
+                    )
+                }
+                .font(.system(size: 11, weight: .medium))
+                .frame(height: 42)
+
+                Text(appState.scheduleStatusDescription)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(appState.isScheduledNow ? Theme.accent : Theme.secondaryText)
+                    .padding(.bottom, 8)
+            }
+        }
+    }
+
+    private func schedulePicker(
+        selection: Binding<Date>,
+        accessibilityLabel: String
+    ) -> some View {
+        DatePicker(
+            accessibilityLabel,
+            selection: selection,
+            displayedComponents: .hourAndMinute
+        )
+        .labelsHidden()
+        .datePickerStyle(.field)
+        .fixedSize()
+        .accessibilityLabel(accessibilityLabel)
+    }
+
     private func rowLabel(_ title: String, systemImage: String) -> some View {
         Label {
             Text(title)
@@ -267,9 +350,9 @@ struct MenuContentView: View {
             Spacer()
 
             Button {
-                NSApplication.shared.terminate(nil)
+                NSApplication.shared.keyWindow?.orderOut(nil)
             } label: {
-                Label("Quit", systemImage: "power")
+                Label("Close", systemImage: "xmark")
             }
         }
         .buttonStyle(.plain)
