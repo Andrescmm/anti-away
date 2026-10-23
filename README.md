@@ -54,6 +54,12 @@ API.
 The Xcode project lives in `AntiAway.xcodeproj` and source is grouped by
 responsibility under `AntiAway/`.
 
+## Release documentation
+
+The complete signing, notarization, DMG, GitHub Release, Sparkle, and landing
+publication workflow is documented in
+[`docs/RELEASING.md`](docs/RELEASING.md).
+
 ## Daily schedule
 
 The optional daily schedule automatically starts and stops activity at the
