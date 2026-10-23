@@ -42,12 +42,20 @@ if [[ -n "$RELEASE_NOTES_PATH" ]]; then
   cp "$RELEASE_NOTES_PATH" "$UPDATES_DIR/AntiAway-$VERSION.md"
 fi
 
+# Without -o, Sparkle writes appcast.xml into the archives directory. Using a
+# relative -o path writes elsewhere and can cause the generated feed to be
+# overwritten by the previous copy.
 "$SPARKLE_TOOL" \
   --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
   --link "https://github.com/Andrescmm/anti-away" \
+  --embed-release-notes \
   --maximum-versions 5 \
-  -o appcast.xml \
   "$UPDATES_DIR"
+
+if ! grep -q "<sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>" "$UPDATES_DIR/appcast.xml"; then
+  print -u2 "error: generated appcast does not contain version $VERSION"
+  exit 1
+fi
 
 cp "$UPDATES_DIR/appcast.xml" "$PROJECT_DIR/appcast.xml"
 
