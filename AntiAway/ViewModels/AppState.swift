@@ -18,9 +18,10 @@ final class AppState: ObservableObject {
     private let simulator: any ActivityPosting
     private let loginItemService: LoginItemService
     private let nowProvider: () -> Date
+    private let scheduleBoundaryScheduler: any ScheduleBoundaryScheduling
     private var timer: Timer?
     private var permissionTimer: Timer?
-    private var scheduleBoundaryTimer: Timer?
+    private var scheduleEnvironmentCancellables = Set<AnyCancellable>()
     private var manualEnabled: Bool
     private var shouldEnableWhenPermitted: Bool
 
@@ -51,12 +52,14 @@ final class AppState: ObservableObject {
         defaults: UserDefaults = .standard,
         simulator: any ActivityPosting = ActivitySimulator(),
         loginItemService: LoginItemService = LoginItemService(),
-        nowProvider: @escaping () -> Date = { .now }
+        nowProvider: @escaping () -> Date = { .now },
+        scheduleBoundaryScheduler: any ScheduleBoundaryScheduling = ScheduleBoundaryScheduler()
     ) {
         self.defaults = defaults
         self.simulator = simulator
         self.loginItemService = loginItemService
         self.nowProvider = nowProvider
+        self.scheduleBoundaryScheduler = scheduleBoundaryScheduler
         self.manualEnabled = defaults.bool(forKey: Key.isEnabled)
         self.shouldEnableWhenPermitted = false
         self.isEnabled = false
@@ -71,6 +74,7 @@ final class AppState: ObservableObject {
         self.isScheduledNow = false
 
         NSApp?.setActivationPolicy(showDockIcon ? .regular : .accessory)
+        observeScheduleEnvironmentChanges()
 
         if scheduleEnabled {
             let now = nowProvider()
@@ -116,8 +120,7 @@ final class AppState: ObservableObject {
         if enabled {
             evaluateSchedule(at: nowProvider(), requestPermission: true)
         } else {
-            scheduleBoundaryTimer?.invalidate()
-            scheduleBoundaryTimer = nil
+            scheduleBoundaryScheduler.cancel()
             isScheduledNow = false
             updateDesiredActivity(manualEnabled, requestPermission: manualEnabled)
         }
@@ -228,19 +231,45 @@ final class AppState: ObservableObject {
     }
 
     private func scheduleNextBoundary(after date: Date) {
-        scheduleBoundaryTimer?.invalidate()
-        scheduleBoundaryTimer = nil
+        scheduleBoundaryScheduler.cancel()
 
         guard scheduleEnabled, let boundary = dailySchedule.nextBoundary(after: date) else { return }
 
-        let boundaryTimer = Timer(fire: boundary.addingTimeInterval(0.5), interval: 0, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.refreshSchedule()
-            }
+        scheduleBoundaryScheduler.schedule(after: boundary.timeIntervalSince(date) + 0.5) { [weak self] in
+            self?.handleScheduleBoundaryReached()
         }
-        boundaryTimer.tolerance = 1
-        RunLoop.main.add(boundaryTimer, forMode: .common)
-        scheduleBoundaryTimer = boundaryTimer
+    }
+
+    /// Called by the background schedule coordinator, not by the popover.
+    /// The current wall-clock time is evaluated again because the task may run
+    /// late after sleep or system load.
+    func handleScheduleBoundaryReached() {
+        guard scheduleEnabled else { return }
+        evaluateSchedule(at: nowProvider(), requestPermission: false)
+    }
+
+    private func observeScheduleEnvironmentChanges() {
+        let defaultCenter = NotificationCenter.default
+        let publishers = [
+            defaultCenter.publisher(for: Notification.Name("NSSystemClockDidChangeNotification")),
+            defaultCenter.publisher(for: Notification.Name("NSSystemTimeZoneDidChangeNotification")),
+            defaultCenter.publisher(for: Notification.Name("NSCalendarDayChangedNotification")),
+            defaultCenter.publisher(for: NSApplication.didFinishLaunchingNotification),
+            NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)
+        ]
+
+        Publishers.MergeMany(publishers)
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.handleScheduleEnvironmentChanged()
+                }
+            }
+            .store(in: &scheduleEnvironmentCancellables)
+    }
+
+    private func handleScheduleEnvironmentChanged() {
+        guard scheduleEnabled else { return }
+        evaluateSchedule(at: nowProvider(), requestPermission: false)
     }
 
     private func scheduleTimer() {
@@ -266,7 +295,7 @@ final class AppState: ObservableObject {
         isEnabled = true
         do {
             try simulator.postActivity()
-            lastActivityDate = .now
+            lastActivityDate = nowProvider()
             stopPermissionPolling()
             scheduleTimer()
         } catch {
@@ -295,7 +324,7 @@ final class AppState: ObservableObject {
 
         do {
             try simulator.postActivity()
-            lastActivityDate = .now
+            lastActivityDate = nowProvider()
         } catch {
             stopActivity()
             accessibilityGranted = simulator.hasAccessibilityPermission()

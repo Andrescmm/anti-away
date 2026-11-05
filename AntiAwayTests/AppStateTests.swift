@@ -67,6 +67,76 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(recorder.postCount, 1, "No activity may be posted after the scheduled end")
     }
 
+    @MainActor
+    func testScheduleBoundaryStartsAndStopsWithoutOpeningMenu() {
+        let defaults = makeDefaults()
+        let recorder = ActivityRecorder(hasPermission: true)
+        let scheduler = ScheduleBoundarySchedulerSpy()
+        let scheduledDay = Calendar.autoupdatingCurrent.date(byAdding: .day, value: 1, to: .now)!
+        var now = date(on: scheduledDay, hour: 8)
+        let state = AppState(
+            defaults: defaults,
+            simulator: recorder,
+            nowProvider: { now },
+            scheduleBoundaryScheduler: scheduler
+        )
+
+        state.setScheduleStartTime(date(on: scheduledDay, hour: 9))
+        state.setScheduleEndTime(date(on: scheduledDay, hour: 17))
+        state.setScheduleEnabled(true)
+
+        XCTAssertFalse(state.isEnabled)
+        XCTAssertFalse(state.isScheduledNow)
+        XCTAssertEqual(scheduler.scheduledDelay ?? 0, 60 * 60 + 0.5, accuracy: 1)
+
+        now = date(on: scheduledDay, hour: 9, minute: 1)
+        scheduler.fire()
+
+        XCTAssertTrue(state.isEnabled)
+        XCTAssertTrue(state.isScheduledNow)
+        XCTAssertEqual(recorder.postCount, 1)
+        XCTAssertNotNil(scheduler.scheduledAction, "The end boundary must be scheduled immediately")
+
+        now = date(on: scheduledDay, hour: 17, minute: 1)
+        scheduler.fire()
+
+        XCTAssertFalse(state.isEnabled)
+        XCTAssertFalse(state.isScheduledNow)
+        XCTAssertEqual(recorder.postCount, 1, "Stopping at the boundary must not post another signal")
+        XCTAssertNotNil(scheduler.scheduledAction, "The next day's start must be scheduled")
+    }
+
+    @MainActor
+    func testSystemClockChangeReevaluatesScheduleWithoutOpeningMenu() async {
+        let defaults = makeDefaults()
+        let recorder = ActivityRecorder(hasPermission: true)
+        let scheduler = ScheduleBoundarySchedulerSpy()
+        let scheduledDay = Calendar.autoupdatingCurrent.date(byAdding: .day, value: 1, to: .now)!
+        var now = date(on: scheduledDay, hour: 10)
+        let state = AppState(
+            defaults: defaults,
+            simulator: recorder,
+            nowProvider: { now },
+            scheduleBoundaryScheduler: scheduler
+        )
+
+        state.setScheduleStartTime(date(on: scheduledDay, hour: 9))
+        state.setScheduleEndTime(date(on: scheduledDay, hour: 17))
+        state.setScheduleEnabled(true)
+        XCTAssertTrue(state.isEnabled)
+
+        now = date(on: scheduledDay, hour: 18)
+        NotificationCenter.default.post(
+            name: Notification.Name("NSSystemClockDidChangeNotification"),
+            object: nil
+        )
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertFalse(state.isEnabled)
+        XCTAssertFalse(state.isScheduledNow)
+    }
+
     private func date(on day: Date, hour: Int, minute: Int = 0) -> Date {
         Calendar.autoupdatingCurrent.date(
             bySettingHour: hour,
@@ -160,5 +230,30 @@ private final class ActivityRecorder: @unchecked Sendable, ActivityPosting {
 
     func postActivity() throws {
         postCount += 1
+    }
+}
+
+@MainActor
+private final class ScheduleBoundarySchedulerSpy: ScheduleBoundaryScheduling {
+    private(set) var scheduledDelay: TimeInterval?
+    private(set) var scheduledAction: (@MainActor @Sendable () -> Void)?
+
+    func schedule(
+        after delay: TimeInterval,
+        action: @escaping @MainActor @Sendable () -> Void
+    ) {
+        scheduledDelay = delay
+        scheduledAction = action
+    }
+
+    func cancel() {
+        scheduledDelay = nil
+        scheduledAction = nil
+    }
+
+    func fire() {
+        let action = scheduledAction
+        scheduledAction = nil
+        action?()
     }
 }

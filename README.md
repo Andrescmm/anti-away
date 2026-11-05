@@ -66,7 +66,11 @@ The optional daily schedule automatically starts and stops activity at the
 selected local times. It supports daytime windows such as 09:00–17:00 and
 overnight windows such as 22:00–06:00. While scheduling is enabled, the manual
 activity switch is locked to avoid conflicting state. Disabling the schedule
-returns control to the user's previously saved manual preference.
+returns control to the user's previously saved manual preference. Schedule
+boundaries run independently of the menu popover, and the app recalculates the
+active window after sleep, system clock changes, time-zone changes, and day
+changes. AntiAway must remain running; enable Launch at login if the schedule
+should resume automatically after restarting the Mac.
 
 ## Requirements
 
