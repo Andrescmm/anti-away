@@ -6,6 +6,33 @@
         <description>Signed update feed for AntiAway.</description>
         <language>en</language>
         <item>
+            <title>1.2.1</title>
+            <pubDate>Thu, 05 Nov 2026 16:44:08 -0500</pubDate>
+            <link>https://github.com/Andrescmm/anti-away</link>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# AntiAway 1.2.1
+
+This maintenance update makes daily schedules run automatically and reliably in the background.
+
+## What’s fixed
+
+- Starts and stops AntiAway at the scheduled times without opening the menu-bar panel.
+- Re-evaluates the schedule after the Mac wakes from sleep.
+- Recalculates the next transition when the system clock, time zone, or calendar day changes.
+- Keeps scheduling lightweight by waiting only for the next start or end boundary.
+
+AntiAway must be running for schedules to execute. Enable **Launch at login** if you want scheduled activity to resume automatically after restarting your Mac.
+
+AntiAway remains local-only and does not record clicks, typing, or screen content.
+]]></description>
+            <enclosure url="https://github.com/Andrescmm/anti-away/releases/download/v1.2.1/AntiAway-1.2.1.dmg" length="2966890" type="application/octet-stream" sparkle:edSignature="RAkZot72lB/JxS7lE1h6btjUFfl5NI0KmqDTHumwQnZlM96BoLaAArFiYhy0VaFeEa/1OE4rKntDyV56eMOjCw=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/Andrescmm/anti-away/releases/download/v1.2.1/AntiAway7-6.delta" sparkle:deltaFrom="6" length="57326" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="zJvyYcoJVRpyuH1o+kIwrDs5Q6JhwqnBj0LPcwtV38lduQi4bWYubeeT4UBJh1417tNEeXJpgX9ukINFEJH0CA=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.2.0</title>
             <pubDate>Thu, 22 Oct 2026 16:35:44 -0500</pubDate>
             <link>https://github.com/Andrescmm/anti-away</link>

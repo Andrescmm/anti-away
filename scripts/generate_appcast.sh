@@ -52,6 +52,19 @@ fi
   --maximum-versions 5 \
   "$UPDATES_DIR"
 
+# generate_appcast applies the current release's download prefix to every
+# archive in the directory, including older versions retained for delta
+# generation. Restore each full DMG URL to the GitHub release that owns it.
+for archive in "$UPDATES_DIR"/AntiAway-*.dmg; do
+  [[ -e "$archive" ]] || continue
+  archive_name="${archive:t}"
+  archive_version="${archive_name#AntiAway-}"
+  archive_version="${archive_version%.dmg}"
+  /usr/bin/sed -E -i '' \
+    "s#releases/download/v[^/]+/$archive_name#releases/download/v$archive_version/$archive_name#g" \
+    "$UPDATES_DIR/appcast.xml"
+done
+
 if ! grep -q "<sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>" "$UPDATES_DIR/appcast.xml"; then
   print -u2 "error: generated appcast does not contain version $VERSION"
   exit 1
